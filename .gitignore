@@ -1,4 +1,4 @@
-# Node/Frontend
+# Node / Frontend
 node_modules/
 .next/
 out/
@@ -6,8 +6,10 @@ out/
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# Python/Backend
+# Python / Backend
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,10 +35,10 @@ venv/
 ENV/
 env/
 
-# Environment files (but keep examples)
+# Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -53,7 +55,35 @@ env/
 .DS_Store
 Thumbs.db
 
+# TypeScript / tooling
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.nyc_output
+coverage/
+*.lcov
+
+# Package managers
+.pnpm-store/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Other frontend caches
+.cache/
+.parcel-cache/
+.vite/
+.nuxt/
+.output/
+.svelte-kit/
+.vuepress/dist
+.docusaurus
+.serverless/
+
 # Project specific
 uploads/
 ml/models/
-*.pyc
