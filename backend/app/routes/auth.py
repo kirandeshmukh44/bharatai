@@ -13,12 +13,18 @@ from app.models import User
 auth_bp = Blueprint('auth', __name__)
 
 
+def log_audit(action, entity_type=None, entity_id=None, old_values=None, new_values=None):
+    """Placeholder audit logger for auth routes."""
+    return None
+
+
 # Schemas
 class RegisterSchema(Schema):
     name = fields.String(required=True, validate=validate.Length(min=2, max=255))
     email = fields.Email(required=True)
     password = fields.String(required=True, validate=validate.Length(min=8))
-    organization = fields.String(validate=validate.Length(max=255))
+    organization = fields.String(validate=validate.Length(max=255), load_default=None)
+    organization_id = fields.String(validate=validate.Length(max=255), load_default=None)
     role = fields.String(validate=validate.OneOf(['admin', 'user', 'auditor', 'viewer']), load_default='user')
 
 
@@ -48,13 +54,14 @@ def register():
         return jsonify({'message': 'Email already registered'}), 409
     
     try:
+        organization_value = data.get('organization_id') or data.get('organization') or 'Default Organization'
         # Create user with UUID
         new_user = User(
             id=str(uuid.uuid4()),
             name=data['name'],
             email=data['email'].lower(),
             role=data.get('role', 'user'),
-            organization=data.get('organization', 'Default Organization'),
+            organization_id=organization_value,
             created_at=datetime.utcnow()
         )
         new_user.set_password(data['password'])
@@ -106,65 +113,6 @@ def login():
     
     except Exception as e:
         return jsonify({'message': 'Login failed', 'error': str(e)}), 500
-    
-    db.session.add(new_user)
-    db.session.commit()
-    
-    # Create audit log
-    log_audit('user_registered', 'user', new_user.id, None, {
-        'name': new_user.name,
-        'email': new_user.email,
-        'role': new_user.role
-    })
-    
-    # Generate token
-    access_token = create_access_token(identity=new_user.id)
-    
-    return jsonify({
-        'message': 'User registered successfully',
-        'token': access_token,
-        'user': new_user.to_dict()
-    }), 201
-
-
-@auth_bp.route('/login', methods=['POST'])
-def login():
-    """User login"""
-    json_data = request.get_json()
-    if not json_data:
-        return jsonify({'message': 'No input data provided'}), 400
-    
-    try:
-        data = login_schema.load(json_data)
-    except ValidationError as err:
-        return jsonify({'message': 'Validation error', 'errors': err.messages}), 400
-    
-    # Find user
-    user = User.query.filter_by(email=data['email'].lower()).first()
-    
-    if not user or not user.check_password(data['password']):
-        # Log failed login attempt
-        log_audit('login_failed', None, None, None, {'email': data['email']})
-        return jsonify({'message': 'Invalid email or password'}), 401
-    
-    if not user.is_active:
-        return jsonify({'message': 'Account is deactivated'}), 403
-    
-    # Update last login
-    user.last_login = datetime.utcnow()
-    db.session.commit()
-    
-    # Generate token
-    access_token = create_access_token(identity=user.id)
-    
-    # Log successful login
-    log_audit('login_success', 'user', user.id)
-    
-    return jsonify({
-        'message': 'Login successful',
-        'token': access_token,
-        'user': user.to_dict()
-    }), 200
 
 
 @auth_bp.route('/logout', methods=['POST'])

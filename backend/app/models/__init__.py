@@ -28,7 +28,6 @@ class Organization(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    users = db.relationship('User', back_populates='organization', lazy='dynamic')
     suppliers = db.relationship('Supplier', back_populates='organization', lazy='dynamic')
     
     def to_dict(self):
@@ -49,7 +48,7 @@ class Organization(db.Model):
 
 
 class User(db.Model):
-    """User model with authentication - Production Ready"""
+    """User model with authentication - aligned to live database schema"""
     __tablename__ = 'users'
     
     id = db.Column(db.String(36), primary_key=True)  # UUID string
@@ -57,12 +56,17 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='user')
-    organization = db.Column(db.String(255))  # Store as string
+    organization_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    # Compatibility alias for older code paths that still use `organization`
+    organization = db.synonym('organization_id')
     
     def set_password(self, password):
         """Hash and set password"""
         self.password = generate_password_hash(password)
+        self.password_hash = self.password
     
     def check_password(self, password):
         """Check password against hash"""
@@ -74,7 +78,8 @@ class User(db.Model):
             'name': self.name,
             'email': self.email,
             'role': self.role,
-            'organization': self.organization,
+            'organization_id': self.organization_id,
+            'organization': self.organization_id,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

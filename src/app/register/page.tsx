@@ -19,34 +19,22 @@ export default function RegisterPage() {
     role: 'user'
   });
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (formData.password !== formData.confirmPassword) {
-  //     alert('Passwords do not match');
-  //     return;
-  //   }
-  //   setIsLoading(true);
-  //   // Simulate API call
-  //   setTimeout(() => {
-  //     setIsLoading(false);
-  //     router.push('/dashboard');
-  //   }, 1500);
-  // };
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
+    .replace(/\/+$/, '')
+    .replace(/\/api$/, '');
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (formData.password !== formData.confirmPassword) {
-    alert('Passwords do not match');
-    return;
-  }
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/register`,
-      {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,11 +43,10 @@ const handleSubmit = async (e: React.FormEvent) => {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          organization_name: formData.organization,
+          organization: formData.organization,
           role: formData.role,
         }),
-      }
-    );
+      });
 
     const data = await response.json();
 

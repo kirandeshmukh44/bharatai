@@ -15,14 +15,41 @@ export default function LoginPage() {
     password: ''
   });
 
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
+    .replace(/\/+$/, '')
+    .replace(/\/api$/, '');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       router.push('/dashboard');
-    }, 1500);
+    } catch (error) {
+      console.error('Login error:', error);
+      alert(error instanceof Error ? error.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
