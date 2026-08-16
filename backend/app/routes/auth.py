@@ -1,13 +1,14 @@
 """
-Authentication routes
+Authentication routes - Production Ready
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from marshmallow import Schema, fields, validate, ValidationError
 from datetime import datetime
+import uuid
 
 from app import db
-from app.models import User, Organization, AuditLog
+from app.models import User
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -17,8 +18,8 @@ class RegisterSchema(Schema):
     name = fields.String(required=True, validate=validate.Length(min=2, max=255))
     email = fields.Email(required=True)
     password = fields.String(required=True, validate=validate.Length(min=8))
-    organization_name = fields.String(validate=validate.Length(max=255))
-    role = fields.String(validate=validate.OneOf(['admin', 'user']), load_default='user')
+    organization = fields.String(validate=validate.Length(max=255))
+    role = fields.String(validate=validate.OneOf(['admin', 'user', 'auditor', 'viewer']), load_default='user')
 
 
 class LoginSchema(Schema):
@@ -30,41 +31,9 @@ register_schema = RegisterSchema()
 login_schema = LoginSchema()
 
 
-def log_audit(action, entity_type=None, entity_id=None, old_values=None, new_values=None):
-    """Helper to create audit log entry"""
-    try:
-        # Get IP and user agent
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-        user_agent = request.headers.get('User-Agent')
-        
-        # Try to get current user from JWT if available
-        user_id = None
-        try:
-            user_id = get_jwt_identity()
-        except:
-            pass
-        
-        log = AuditLog(
-            user_id=user_id,
-            action=action,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            old_values=old_values,
-            new_values=new_values,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        # Don't fail the main operation if audit logging fails
-        print(f"Audit logging error: {e}")
-
-
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Register a new user"""
+    """Register a new user - Production Ready"""
     json_data = request.get_json()
     if not json_data:
         return jsonify({'message': 'No input data provided'}), 400
@@ -78,25 +47,65 @@ def register():
     if User.query.filter_by(email=data['email'].lower()).first():
         return jsonify({'message': 'Email already registered'}), 409
     
-    # Create organization if provided
-    organization_id = None
-    if data.get('organization_name'):
-        org = Organization(
-            name=data['organization_name'],
-            country='India'  # Default country
+    try:
+        # Create user with UUID
+        new_user = User(
+            id=str(uuid.uuid4()),
+            name=data['name'],
+            email=data['email'].lower(),
+            role=data.get('role', 'user'),
+            organization=data.get('organization', 'Default Organization'),
+            created_at=datetime.utcnow()
         )
-        db.session.add(org)
-        db.session.flush()
-        organization_id = org.id
+        new_user.set_password(data['password'])
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # Generate token
+        access_token = create_access_token(identity=new_user.id)
+        
+        return jsonify({
+            'message': 'User registered successfully',
+            'token': access_token,
+            'user': new_user.to_dict()
+        }), 201
     
-    # Create user
-    new_user = User(
-        name=data['name'],
-        email=data['email'].lower(),
-        role=data['role'],
-        organization_id=organization_id
-    )
-    new_user.set_password(data['password'])
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
+
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    """User login - Production Ready"""
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({'message': 'No input data provided'}), 400
+    
+    try:
+        data = login_schema.load(json_data)
+    except ValidationError as err:
+        return jsonify({'message': 'Validation error', 'errors': err.messages}), 400
+    
+    try:
+        # Find user
+        user = User.query.filter_by(email=data['email'].lower()).first()
+        
+        if not user or not user.check_password(data['password']):
+            return jsonify({'message': 'Invalid email or password'}), 401
+        
+        # Generate token
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'message': 'Login successful',
+            'token': access_token,
+            'user': user.to_dict()
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'message': 'Login failed', 'error': str(e)}), 500
     
     db.session.add(new_user)
     db.session.commit()

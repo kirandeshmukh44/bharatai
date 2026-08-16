@@ -1,0 +1,60 @@
+# Netlify Configuration for BharatAI Frontend
+# This file tells Netlify how to build and deploy your Next.js app
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+  # Functions directory for Netlify Edge Functions (optional)
+  functions = "functions"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18.17.0"
+  # Next.js build optimization
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Redirects and rewrites
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# For Next.js App Router, redirect everything to index.html for client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = { NOT = [{ header = "Accept", values = ["application/json"] }] }
+
+# Cache configuration
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Environment variables
+# Set these in Netlify dashboard:
+# NEXT_PUBLIC_API_URL = https://your-render-backend.onrender.com
+
+# Production optimization
+[functions]
+  node_bundler = "esbuild"
+
+# Deploy settings
+[dev]
+  command = "npm run dev"
+  port = 3000
+  functions = "functions"

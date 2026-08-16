@@ -19,19 +19,82 @@ export default function RegisterPage() {
     role: 'user'
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (formData.password !== formData.confirmPassword) {
+  //     alert('Passwords do not match');
+  //     return;
+  //   }
+  //   setIsLoading(true);
+  //   // Simulate API call
+  //   setTimeout(() => {
+  //     setIsLoading(false);
+  //     router.push('/dashboard');
+  //   }, 1500);
+  // };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (formData.password !== formData.confirmPassword) {
+    alert('Passwords do not match');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/register`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          organization_name: formData.organization,
+          role: formData.role,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Registration failed'
+      );
     }
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/dashboard');
-    }, 1500);
-  };
+
+    // Save JWT token
+    localStorage.setItem('token', data.token);
+
+    // Optional: save user
+    localStorage.setItem(
+      'user',
+      JSON.stringify(data.user)
+    );
+
+    router.push('/dashboard');
+
+  } catch (error) {
+    console.error('Registration error:', error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Internal server error'
+    );
+
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-4">

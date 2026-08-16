@@ -49,35 +49,24 @@ class Organization(db.Model):
 
 
 class User(db.Model):
-    """User model with authentication"""
+    """User model with authentication - Production Ready"""
     __tablename__ = 'users'
     
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(36), primary_key=True)  # UUID string
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='user')  # 'admin' or 'user'
-    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True)
-    is_active = db.Column(db.Boolean, default=True)
-    last_login = db.Column(db.DateTime)
+    password = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), nullable=False, default='user')
+    organization = db.Column(db.String(255))  # Store as string
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    organization = db.relationship('Organization', back_populates='users')
-    
-    # Constraints
-    __table_args__ = (
-        CheckConstraint(role.in_(['admin', 'user']), name='check_valid_role'),
-    )
     
     def set_password(self, password):
         """Hash and set password"""
-        self.password_hash = generate_password_hash(password)
+        self.password = generate_password_hash(password)
     
     def check_password(self, password):
         """Check password against hash"""
-        return check_password_hash(self.password_hash, password)
+        return check_password_hash(self.password, password)
     
     def to_dict(self):
         return {
@@ -85,9 +74,7 @@ class User(db.Model):
             'name': self.name,
             'email': self.email,
             'role': self.role,
-            'organization_id': self.organization_id,
-            'is_active': self.is_active,
-            'last_login': self.last_login.isoformat() if self.last_login else None,
+            'organization': self.organization,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

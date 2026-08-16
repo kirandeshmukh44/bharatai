@@ -1,0 +1,70 @@
+services:
+  - type: web
+    name: bharatai-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT run:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: PORT
+        value: "5000"
+      - key: PYTHON_VERSION
+        value: "3.8"
+      - key: DATABASE_URL
+        syncWith: bharatai-db
+      # Add these in Render dashboard:
+      # - key: SECRET_KEY
+      #   generateValue: true
+      # - key: JWT_SECRET_KEY
+      #   generateValue: true
+      # - key: CORS_ORIGINS
+      #   value: "https://your-netlify-domain.netlify.app"
+    
+    autoDeploy: true
+    branch: main
+    disk:
+      name: bharatai-uploads
+      mountPath: /var/data/uploads
+      sizeGB: 1
+
+  - type: pserv
+    name: bharatai-db
+    runtime: postgres
+    plan: free
+    ipAllowList: []
+    postgresMajorVersion: "15"
+    envVars:
+      - key: POSTGRES_DB
+        value: bharatai
+      - key: POSTGRES_USER
+        value: bharatai
+      # Password will be generated automatically
+    disk:
+      name: bharatai-data
+      sizeGB: 1
+    backups:
+      frequency: daily
+      retentionDays: 7
+
+# Build configuration
+build:
+  # Build occurs within the docker container
+  dockerfilePath: ./Dockerfile
+
+# Environment
+env:
+  POSTGRES_DIALECT: postgresql
+  
+# Deployment configuration notes:
+# 1. Connect your GitHub repository to Render
+# 2. Set environment variables in Render dashboard:
+#    - SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+#    - JWT_SECRET_KEY (generate same way)
+#    - CORS_ORIGINS (your Netlify URL)
+# 3. Ensure PostgreSQL service is created
+# 4. Set DATABASE_URL from PostgreSQL service
+# 5. Deploy and test health endpoint: /api/health
